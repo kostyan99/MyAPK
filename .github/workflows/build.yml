@@ -21,10 +21,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.buildozer
-        key: buildozer-${{ runner.os }}-v3-${{ hashFiles('buildozer.spec') }}
+        key: buildozer-${{ runner.os }}-v4-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
-          buildozer-${{ runner.os }}-v3-
-          
+          buildozer-${{ runner.os }}-v4-
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -32,7 +32,7 @@ jobs:
           libssl-dev libffi-dev python3-dev \
           openjdk-17-jdk unzip zip \
           libtool autoconf automake pkg-config
-        pip3 install buildozer cython
+        pip3 install buildozer cython==0.29.36
 
     - name: Build APK with retry
       run: |
@@ -47,7 +47,7 @@ jobs:
       timeout-minutes: 120
 
     - name: Find APK
-      run: find / -name "*.apk" 2>/dev/null
+      run: find / -name "*.apk" 2>/dev/null || true
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
