@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Configure git for rate limiting
       run: |
@@ -18,7 +18,7 @@ jobs:
         git config --global http.postBuffer 524288000
 
     - name: Cache buildozer
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.buildozer
         key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
@@ -45,6 +45,9 @@ jobs:
           fi
         done
       timeout-minutes: 120
+
+    - name: Find APK
+      run: find / -name "*.apk" 2>/dev/null
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
